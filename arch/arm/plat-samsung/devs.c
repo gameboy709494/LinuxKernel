@@ -107,6 +107,7 @@ struct platform_device s3c_device_adc = {
 	.num_resources	= ARRAY_SIZE(s3c_adc_resource),
 	.resource	= s3c_adc_resource,
 };
+EXPORT_SYMBOL(s3c_device_adc);
 #endif /* CONFIG_PLAT_S3C24XX */
 
 #if defined(CONFIG_SAMSUNG_DEV_ADC)
@@ -122,6 +123,7 @@ struct platform_device s3c_device_adc = {
 	.num_resources	= ARRAY_SIZE(s3c_adc_resource),
 	.resource	= s3c_adc_resource,
 };
+EXPORT_SYMBOL(s3c_device_adc);
 #endif /* CONFIG_SAMSUNG_DEV_ADC */
 
 /* Camif Controller */

@@ -26,7 +26,9 @@
 #include <linux/fb.h>
 #include <linux/gpio.h>
 #include <linux/delay.h>
+#ifdef CONFIG_NET_VENDOR_SMSC
 #include <linux/smsc911x.h>
+#endif
 #include <linux/regulator/fixed.h>
 #include <linux/regulator/machine.h>
 #include <linux/pwm_backlight.h>
@@ -76,6 +78,110 @@
 #include "regs-srom.h"
 #include "regs-sys.h"
 
+
+#ifdef CONFIG_SND_SOC_SAMSUNG
+#include <linux/platform_data/asoc-s3c.h>
+#endif
+
+#ifdef CONFIG_DM9000
+#include <linux/dm9000.h>
+
+#define S3C64XX_PA_DM9000   S3C64XX_PA_XM0CSN1    //0x1800_0000位于SROMC Bank 1
+#define S3C64XX_SZ_DM9000   SZ_1M           //DM9000的内存大小设为1M
+#define S3C64XX_VA_DM9000   S3C_ADDR(0x03b00300)//固定映射的虚拟地址
+
+static struct resource dm9000_resources[] = {
+    [0] = {
+        .start      = S3C64XX_PA_DM9000,
+        .end        = S3C64XX_PA_DM9000 + 3,
+        .flags      = IORESOURCE_MEM,
+    },  //为什么要分开呢我不清楚，我认为不分开也是可以的
+        //在这里不深究了。以后可以改改这里
+    [1] = {
+        .start      = S3C64XX_PA_DM9000 + 4,
+        .end        = S3C64XX_PA_DM9000 + S3C64XX_SZ_DM9000 - 1,
+        .flags      = IORESOURCE_MEM,
+    },
+    [2] = {
+        .start      = IRQ_EINT(7),  //DM9000A仅仅接入一个中断线
+        .end        = IRQ_EINT(7),  //默认高电平触发中断
+        .flags      = IORESOURCE_IRQ | IRQF_TRIGGER_HIGH,
+    },
+};
+
+static struct dm9000_plat_data dm9000_setup = {
+    .flags          = DM9000_PLATF_16BITONLY,
+    //.dev_addr       = { 0x08, 0x90, 0x00, 0xa0, 0x90, 0x80 },
+};
+static struct platform_device s3c_device_dm9000 = {
+    .name           = "dm9000",
+    .id             = 0,
+    .num_resources  = ARRAY_SIZE(dm9000_resources),
+    .resource       = dm9000_resources,
+    .dev            = {
+        .platform_data  = &dm9000_setup,
+    }
+};
+#endif
+#ifdef CONFIG_USB_SUPPORT
+#include <plat/regs-usb-hsotg-phy.h>
+#include <plat/clock.h>
+static void __init s3c_otg_phy_config( int enable ){
+	unsigned int val;
+	if(enable==1){
+		__raw_writel( 0x0, S3C_PHYPWR ); /* POWER UP */
+		val = __raw_readl( S3C_PHYPWR );
+		val &= ~S3C_PHYCLK_CLKSEL_MASK;
+		__raw_writel( val, S3C_PHYCLK );
+		__raw_writel( 0x1, S3C_RSTCON );
+		udelay(5);
+		__raw_writel( 0x0, S3C_RSTCON ); /* Finish the reset */
+		udelay(5);
+	} else {  
+  		__raw_writel( 0x19, S3C_PHYPWR ); /* Power down */  
+ 	}
+}
+#endif
+#ifdef CONFIG_S3C_DEV_NAND
+#include <linux/mtd/mtd.h>
+#include <linux/mtd/partitions.h>
+#include <linux/platform_data/mtd-nand-s3c2410.h>
+static struct mtd_partition s3c64xx_nand_part[] = {
+    [0] = {
+        .name   = "uboot",
+        .size   = SZ_1M,
+        .offset = 0,
+    },
+    [1] = {
+        .name   = "kernel",
+        .size   = SZ_4M,
+        .offset = MTDPART_OFS_APPEND,
+    },
+    [2] = {
+        .name   = "rootfs",
+        .size   = SZ_2G-SZ_1M-SZ_4M,
+        .offset = MTDPART_OFS_APPEND,
+    },
+};
+static struct s3c2410_nand_set s3c64xx_nand_sets[] = {
+    [0] = {
+        .name       = "nand",
+        .nr_chips   = 1,
+        .nr_partitions  = ARRAY_SIZE(s3c64xx_nand_part),
+        .partitions = s3c64xx_nand_part,
+    },
+};
+static struct s3c2410_platform_nand s3c64xx_nand_info = {
+    .tacls      = 25, /* time for active CLE/ALE to nWE/nOE */
+                      /* tCLS (CLE setup Time) */
+    .twrph0     = 55, /* active time for nWE/nOE */
+                      /* tWP (WE Pulse Width) */
+    .twrph1     = 40, /* time for release CLE/ALE from nWE/nOE inactive */
+                      /* tCLH (CLE Hold Time) */
+    .nr_sets    = ARRAY_SIZE(s3c64xx_nand_sets),
+    .sets       = s3c64xx_nand_sets,
+};
+#endif
 #define UCON S3C2410_UCON_DEFAULT | S3C2410_UCON_UCLK
 #define ULCON S3C2410_LCON_CS8 | S3C2410_LCON_PNONE | S3C2410_LCON_STOPB
 #define UFCON S3C2410_UFCON_RXTRIG8 | S3C2410_UFCON_FIFOMODE
@@ -148,21 +254,21 @@ static struct platform_device smdk6410_lcd_powerdev = {
 static struct s3c_fb_pd_win smdk6410_fb_win0 = {
 	.max_bpp	= 32,
 	.default_bpp	= 16,
-	.xres		= 800,
-	.yres		= 480,
-	.virtual_y	= 480 * 2,
-	.virtual_x	= 800,
+	.xres		= 480,
+	.yres		= 272,
+	.virtual_x	= 480,
+	.virtual_y	= 272*2,
 };
 
 static struct fb_videomode smdk6410_lcd_timing = {
-	.left_margin	= 8,
-	.right_margin	= 13,
-	.upper_margin	= 7,
-	.lower_margin	= 5,
-	.hsync_len	= 3,
-	.vsync_len	= 1,
-	.xres		= 800,
-	.yres		= 480,
+	.left_margin	= 2,
+	.right_margin	= 2,
+	.upper_margin	= 2,
+	.lower_margin	= 2,
+	.hsync_len	= 40,
+	.vsync_len	= 10,
+	.xres		= 480,
+	.yres		= 272,
 };
 
 /* 405566 clocks per frame => 60Hz refresh requires 24333960Hz clock */
@@ -174,6 +280,7 @@ static struct s3c_fb_platdata smdk6410_lcd_pdata __initdata = {
 	.vidcon1	= VIDCON1_INV_HSYNC | VIDCON1_INV_VSYNC,
 };
 
+#ifdef CONFIG_NET_VENDOR_SMSC
 /*
  * Configuring Ethernet on SMDK6410
  *
@@ -207,7 +314,7 @@ static struct platform_device smdk6410_smsc911x = {
 		.platform_data = &smdk6410_smsc911x_pdata,
 	},
 };
-
+#endif
 #ifdef CONFIG_REGULATOR
 static struct regulator_consumer_supply smdk6410_b_pwr_5v_consumers[] __initdata = {
 	REGULATOR_SUPPLY("PVDD", "0-001b"),
@@ -283,13 +390,23 @@ static struct platform_device *smdk6410_devices[] __initdata = {
 	&smdk6410_b_pwr_5v,
 #endif
 	&smdk6410_lcd_powerdev,
-
+#ifdef CONFIG_NET_VENDOR_SMSC
 	&smdk6410_smsc911x,
+#endif
 	&s3c_device_adc,
 	&s3c_device_cfcon,
 	&s3c_device_rtc,
 	&s3c_device_ts,
 	&s3c_device_wdt,
+#ifdef CONFIG_S3C_DEV_NAND
+	&s3c_device_nand,
+#endif 
+#ifdef CONFIG_DM9000
+	&s3c_device_dm9000,
+#endif
+#ifdef CONFIG_SND_SOC_SAMSUNG
+	&s3c64xx_device_ac97,
+#endif
 };
 
 #ifdef CONFIG_REGULATOR
@@ -693,8 +810,18 @@ static void __init smdk6410_machine_init(void)
 	s3c_ide_set_platdata(&smdk6410_ide_pdata);
 
 	platform_add_devices(smdk6410_devices, ARRAY_SIZE(smdk6410_devices));
-
+#ifdef CONFIG_SAMSUNG_DEV_BACKLIGHT
 	samsung_bl_set(&smdk6410_bl_gpio_info, &smdk6410_bl_data);
+#endif
+#ifdef CONFIG_SND_SOC_SAMSUNG
+	s3c64xx_ac97_setup_gpio(S3C64XX_AC97_GPD);
+#endif
+#ifdef CONFIG_S3C_DEV_NAND
+	s3c_nand_set_platdata(&s3c64xx_nand_info);
+#endif
+#ifdef CONFIG_USB_SUPPORT
+	s3c_otg_phy_config(1);
+#endif
 }
 
 MACHINE_START(SMDK6410, "SMDK6410")
