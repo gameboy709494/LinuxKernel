@@ -11,6 +11,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+#define DEBUG 1
 
 #include <linux/io.h>
 #include <linux/delay.h>
@@ -327,10 +328,37 @@ static int s3c_ac97_mic_trigger(struct snd_pcm_substream *substream,
 
 	return 0;
 }
+static int test123( struct snd_pcm_substream *substream,struct snd_soc_dai *dai ){
+	struct snd_ac97 *ac97;
+	ac97 = 0;
+	s3c_ac97_write( ac97,0x26,0x0);
+	s3c_ac97_write(ac97, 0x0c, 0x0808);
+	s3c_ac97_write(ac97,0x3c, 0xf803);
+	s3c_ac97_write(ac97,0x3e,0xb990);
 
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		//s3c6400_ac97_write(0,0x02, 0x8080);
+		s3c_ac97_write(ac97,0x02, 0x0404);
+		s3c_ac97_write(ac97, 0x04, 0x0606);
+		//s3c6400_ac97_write(0,0x1c, 0x00aa);
+		s3c_ac97_write(ac97,0x1c, 0x12aa);
+	}else{
+		s3c_ac97_write(ac97, 0x12, 0x0f0f);
+#ifdef CONFIG_SOUND_WM9713_INPUT_STREAM_MIC
+		s3c_ac97_write(ac97,0x5c,0x2);
+		s3c_ac97_write(ac97,0x10,0x68);
+		s3c_ac97_write(ac97,0x14,0xfe00);
+#else /* Input Stream is LINE-IN */
+		s3c_ac97_write(ac97, 0x14, 0xd612);
+#endif
+	}
+
+	return 0;
+}
 static const struct snd_soc_dai_ops s3c_ac97_dai_ops = {
 	.hw_params	= s3c_ac97_hw_params,
 	.trigger	= s3c_ac97_trigger,
+	.prepare = test123,
 };
 
 static const struct snd_soc_dai_ops s3c_ac97_mic_dai_ops = {
