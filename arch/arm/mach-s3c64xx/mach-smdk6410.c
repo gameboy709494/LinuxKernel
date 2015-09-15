@@ -125,7 +125,6 @@ static struct platform_device s3c_device_dm9000 = {
 #endif
 #ifdef CONFIG_USB_SUPPORT
 #include <plat/regs-usb-hsotg-phy.h>
-#include <plat/clock.h>
 static void __init s3c_otg_phy_config( int enable ){
 	unsigned int val;
 	if(enable==1){
