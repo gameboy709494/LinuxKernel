@@ -159,7 +159,7 @@ static struct mtd_partition s3c64xx_nand_part[] = {
     },
     [2] = {
         .name   = "rootfs",
-        .size   = SZ_2G-SZ_1M-SZ_4M,
+        .size   = MTDPART_SIZ_FULL,
         .offset = MTDPART_OFS_APPEND,
     },
 };
