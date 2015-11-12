@@ -148,12 +148,12 @@ static void __init s3c_otg_phy_config( int enable ){
 static struct mtd_partition s3c64xx_nand_part[] = {
     [0] = {
         .name   = "uboot",
-        .size   = SZ_1M,
+        .size   = 10*SZ_1M,
         .offset = 0,
     },
     [1] = {
         .name   = "kernel",
-        .size   = SZ_4M,
+        .size   = 5*SZ_1M,
         .offset = MTDPART_OFS_APPEND,
     },
     [2] = {

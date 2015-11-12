@@ -362,6 +362,7 @@ static struct samsung_clock_alias s3c64xx_clock_aliases[] = {
 	ALIAS(SCLK_AUDIO1, "samsung-i2s.1", "audio-bus"),
 	ALIAS(SCLK_AUDIO0, "samsung-pcm.0", "audio-bus"),
 	ALIAS(SCLK_AUDIO0, "samsung-i2s.0", "audio-bus"),
+	ALIAS(MEM0_NFCON, "s3c6400-nand", "nand"),
 	ALIAS(SCLK_UART, NULL, "clk_uart_baud3"),
 	ALIAS(SCLK_CAM, "s3c-camif", "camera"),
 };
