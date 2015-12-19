@@ -228,7 +228,7 @@ static void smdk6410_lcd_power_set(struct plat_lcd_data *pd,
 				   unsigned int power)
 {
 	if (power) {
-		gpio_direction_output(S3C64XX_GPF(13), 1);
+		gpio_direction_output(S3C64XX_GPF(14), 1);
 
 		/* fire nRESET on power up */
 		gpio_direction_output(S3C64XX_GPN(5), 0);
@@ -236,7 +236,7 @@ static void smdk6410_lcd_power_set(struct plat_lcd_data *pd,
 		gpio_direction_output(S3C64XX_GPN(5), 1);
 		msleep(1);
 	} else {
-		gpio_direction_output(S3C64XX_GPF(13), 0);
+		gpio_direction_output(S3C64XX_GPF(14), 0);
 	}
 }
 
